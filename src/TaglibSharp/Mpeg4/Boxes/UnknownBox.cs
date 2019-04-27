@@ -70,7 +70,7 @@ namespace TagLib.Mpeg4
             if (file == null)
                 throw new ArgumentNullException (nameof (file));
 
-            data = LoadData (file);
+            data = file.ReadBlock(DataSize > 0 ? DataSize : 0);
         }
 
 #endregion
