@@ -423,7 +423,10 @@ namespace TagLib.Mpeg4
         ///    A <see cref="uint" /> value containing the maximum
         ///    bitrate the stream described by the current instance.
         /// </value>
-        public uint MaximumBitrate { get { return max_bitrate / 1000; } }
+        public uint MaximumBitrate
+        {
+            get { return max_bitrate / 1000; }
+        }
 
         /// <summary>
         ///    Gets the maximum average the stream described by the
@@ -433,7 +436,10 @@ namespace TagLib.Mpeg4
         ///    A <see cref="uint" /> value containing the average
         ///    bitrate the stream described by the current instance.
         /// </value>
-        public uint AverageBitrate { get { return average_bitrate / 1000; } }
+        public uint AverageBitrate
+        {
+            get { return average_bitrate / 1000; }
+        }
 
         /// <summary>
         ///    Gets the decoder config data of stream described by the
@@ -444,7 +450,10 @@ namespace TagLib.Mpeg4
         ///    config data of the stream described by the current
         ///    instance.
         /// </value>
-        public ByteVector DecoderConfig { get { return decoder_config; } }
+        public ByteVector DecoderConfig
+        {
+            get { return decoder_config; }
+        }
 
 #endregion
 
