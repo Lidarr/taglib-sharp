@@ -1,5 +1,7 @@
+using System.Linq;
 using NUnit.Framework;
 using TagLib;
+using TagLib.Ogg;
 
 namespace TaglibSharp.Tests.FileFormats
 {
@@ -8,12 +10,12 @@ namespace TaglibSharp.Tests.FileFormats
     {
         static readonly string sample_file = TestPath.Samples + "sample.opus";
         static readonly string tmp_file = TestPath.Samples + "tmpwrite.opus";
-        File file;
+        TagLib.File file;
 
         [OneTimeSetUp]
         public void Init ()
         {
-            file = File.Create (sample_file);
+            file = TagLib.File.Create (sample_file);
         }
 
         [Test]
@@ -89,6 +91,35 @@ namespace TaglibSharp.Tests.FileFormats
             var p3 = file.Find("OggS", p2 + 1);
 
             Assert.AreEqual(p3, file.InvariantStartPosition);
+        }
+
+        [TestCase(10, false, 1, 10)]
+        [TestCase(260, false, 2, 5)]
+        [TestCase(255, false, 1, 255)]
+        [TestCase(510, false, 2, 255)]
+        [TestCase(510, true, 3, 0)]
+        public void CheckLacingValues(int packet_length, bool packet_complete, int expected_lacing_lengtg, int expected_last_lace)
+        {
+            var page = CreatePageWithPacketLength(packet_length, packet_complete);
+
+            var lacing_values = Enumerable.Repeat((byte)255, expected_lacing_lengtg - 1).ToList();
+            lacing_values.Add((byte)expected_last_lace);
+            var expected_lacing = new ByteVector(lacing_values.ToArray());
+
+            Assert.AreEqual(page.Header.LacingValues, expected_lacing);
+        }
+
+        private Page CreatePageWithPacketLength(int length, bool packetComplete)
+        {
+            var page_packets = new ByteVectorCollection ();
+            page_packets.Add(new ByteVector(new byte[length], length));
+            
+            var header = new PageHeader(0, 0, PageFlags.None, packetComplete);
+            var page = new Page(page_packets, header);
+
+            page.Render();
+            
+            return page;
         }
     }
 }

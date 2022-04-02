@@ -105,7 +105,11 @@ namespace TagLib.Ogg
         ///    A <see cref="PageFlags" /> object containing the flags
         ///    that apply to the page described by the new instance.
         /// </param>
-        public PageHeader (uint streamSerialNumber, uint pageNumber, PageFlags flags)
+        /// <param name="lastPacketComplete">
+        ///    A <see cref="bool" /> value signifying whether the last packet
+        ///    in this page is complete or will be continued in the next page
+        /// </param>
+        public PageHeader (uint streamSerialNumber, uint pageNumber, PageFlags flags, bool lastPacketComplete)
         {
             version = 0;
             Flags = flags;
@@ -115,7 +119,7 @@ namespace TagLib.Ogg
             Size = 0;
             DataSize = 0;
             packet_sizes = new List<int> ();
-            LastPacketComplete = false;
+            LastPacketComplete = lastPacketComplete;
 
             if (pageNumber == 0 && (flags & PageFlags.FirstPacketContinued) == 0)
                 Flags |= PageFlags.FirstPageOfStream;
@@ -223,7 +227,11 @@ namespace TagLib.Ogg
         ///    A <see cref="PageFlags"/> value specifying the flags to
         ///    use in the new instance.
         /// </param>
-        public PageHeader (PageHeader original, uint offset, PageFlags flags)
+        /// <param name="lastPacketComplete">
+        ///    A <see cref="bool" /> value signifying whether the last packet
+        ///    in this page is complete or will be continued in the next page
+        /// </param>
+        public PageHeader (PageHeader original, uint offset, PageFlags flags, bool lastPacketComplete)
         {
             version = original.version;
             Flags = flags;
@@ -233,7 +241,7 @@ namespace TagLib.Ogg
             Size = original.Size;
             DataSize = original.DataSize;
             packet_sizes = new List<int> ();
-            LastPacketComplete = false;
+            LastPacketComplete = lastPacketComplete;
 
             if (PageSequenceNumber == 0 && (flags & PageFlags.FirstPacketContinued) == 0)
                 Flags |= PageFlags.FirstPageOfStream;
@@ -374,7 +382,7 @@ namespace TagLib.Ogg
         ///    A <see cref="ByteVector" /> object containing the
         ///    rendered lacing values.
         /// </value>
-        ByteVector LacingValues {
+        public ByteVector LacingValues {
             get {
                 ByteVector data = new ByteVector ();
 
@@ -396,7 +404,8 @@ namespace TagLib.Ogg
                         data.Add (255);
 
                     if (i < sizes.Length - 1 ||
-                        (packet_sizes[i] % 255) != 0)
+                        (packet_sizes[i] % 255) != 0 ||
+                        LastPacketComplete)
                         data.Add ((byte)rem);
                 }
 
@@ -513,7 +522,7 @@ namespace TagLib.Ogg
         ///    unequal to <paramref name="second" />. Otherwise, <see
         ///    langword="false" />.
         /// </returns>
-            public static bool operator != (PageHeader first, PageHeader second)
+        public static bool operator != (PageHeader first, PageHeader second)
         {
             return !first.Equals (second);
         }

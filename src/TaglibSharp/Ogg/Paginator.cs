@@ -208,11 +208,14 @@ namespace TagLib.Ogg
                 }
 
                 if (lacing_bytes_used == lacing_per_page) {
+                    // Either packet will be completed on next page (most likely)
+                    // or whole_packet == true and the end of the packet
+                    // happened to fall on the lacing_per_page boundary
                     pages.Add (new Page (page_packets,
                                          new PageHeader (first_header,
-                                                         index, first_packet_continued ?
-                                                         PageFlags.FirstPacketContinued :
-                                                         PageFlags.None)));
+                                                         index,
+                                                         first_packet_continued ? PageFlags.FirstPacketContinued : PageFlags.None,
+                                                         whole_packet)));
                     page_packets = new ByteVectorCollection ();
                     lacing_bytes_used = 0;
                     index++;
@@ -221,13 +224,14 @@ namespace TagLib.Ogg
                 }
             }
 
+            // this is a final page to complete anything left over
             if (page_packets.Count > 0) {
                 pages.Add (new Page (page_packets,
                                      new PageHeader (
                                          first_header.StreamSerialNumber,
-                                         index, first_packet_continued ?
-                                         PageFlags.FirstPacketContinued :
-                                         PageFlags.None)));
+                                         index,
+                                         first_packet_continued ? PageFlags.FirstPacketContinued : PageFlags.None,
+                                         true)));
                 index++;
                 count--;
             }
