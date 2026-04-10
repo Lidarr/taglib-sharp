@@ -114,6 +114,8 @@ namespace TagLib.Mpeg4
                 return new IsoFreeSpaceBox (header, file, handler);
             else if (type == BoxType.Mean || type == BoxType.Name)
                 return new AppleAdditionalInfoBox (header, file, handler);
+            else if (type == BoxType.Chpl)
+				return new OpaqueBox (header, file, handler);
 
             // If we still don't have a tag, and we're inside an
             // ItemListBox, load the box as an AnnotationBox

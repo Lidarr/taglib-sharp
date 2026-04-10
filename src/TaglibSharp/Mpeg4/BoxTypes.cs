@@ -47,6 +47,7 @@ namespace TagLib.Mpeg4
         public static readonly ReadOnlyByteVector Cmt = AppleTag.FixId ("cmt");
         public static readonly ReadOnlyByteVector Cond = "cond";
         public static readonly ReadOnlyByteVector Covr = "covr";
+        public static readonly ReadOnlyByteVector Chpl = "chpl";
         public static readonly ReadOnlyByteVector Co64 = "co64";
         public static readonly ReadOnlyByteVector Cpil = "cpil";
         public static readonly ReadOnlyByteVector Cprt = "cprt";
