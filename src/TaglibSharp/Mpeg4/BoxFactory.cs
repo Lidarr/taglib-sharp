@@ -67,7 +67,9 @@ namespace TagLib.Mpeg4
                 parent.Box is IsoSampleDescriptionBox &&
                 index < (parent.Box as IsoSampleDescriptionBox).EntryCount) {
                 if (handler != null && handler.HandlerType == BoxType.Soun)
-                    return new IsoAudioSampleEntry (header, file, handler);
+                    return header.BoxType == "alac"
+                        ? new AppleLosslessSampleEntry (header, file, handler)
+                        : new IsoAudioSampleEntry (header, file, handler);
 
                 if (handler != null && handler.HandlerType == BoxType.Vide)
                     return new IsoVisualSampleEntry (header, file, handler);
@@ -108,6 +110,8 @@ namespace TagLib.Mpeg4
                 return new AppleItemListBox (header, file, handler);
             else if (type == BoxType.Data)
                 return new AppleDataBox (header, file, handler);
+            else if (type == "alac" && parent.BoxType == "alac")
+                return new AppleLosslessConfigurationBox (header, file, handler);
             else if (type == BoxType.Esds)
                 return new AppleElementaryStreamDescriptor (header, file, handler);
             else if (type == BoxType.Free || type == BoxType.Skip)

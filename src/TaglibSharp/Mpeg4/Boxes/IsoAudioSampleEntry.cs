@@ -53,6 +53,9 @@ namespace TagLib.Mpeg4
         /// </summary>
         readonly uint sample_rate;
 
+        // QuickTime sound descriptions may extend the standard sample entry.
+        readonly ushort sound_version;
+
         /// <summary>
         ///    Contains the children of the box.
         /// </summary>
@@ -90,6 +93,8 @@ namespace TagLib.Mpeg4
             if (file == null)
                 throw new ArgumentNullException (nameof (file));
 
+            file.Seek (base.DataPosition);
+            sound_version = file.ReadBlock (2).ToUShort ();
             file.Seek (base.DataPosition + 8);
             channel_count = file.ReadBlock (2).ToUShort ();
             sample_size = file.ReadBlock (2).ToUShort ();
@@ -113,7 +118,7 @@ namespace TagLib.Mpeg4
         ///    the data contained in the current instance.
         /// </value>
         protected override long DataPosition {
-            get { return base.DataPosition + 20; }
+            get { return base.DataPosition + 20 + (BoxType == "alac" ? (sound_version == 1 ? 16 : sound_version == 2 ? 36 : 0) : 0); }
         }
 
         /// <summary>
@@ -177,7 +182,7 @@ namespace TagLib.Mpeg4
         ///    A <see cref="int" /> value containing a bitrate of the
         ///    audio represented by the current instance.
         /// </value>
-        public int AudioBitrate {
+        public virtual int AudioBitrate {
             get {
                 // If we don't have an stream descriptor, we
                 // don't know what's what.
@@ -197,7 +202,7 @@ namespace TagLib.Mpeg4
         ///    A <see cref="int" /> value containing the sample rate of
         ///    the audio represented by the current instance.
         /// </value>
-        public int AudioSampleRate {
+        public virtual int AudioSampleRate {
             get { return (int)(sample_rate >> 16); }
         }
 
@@ -210,7 +215,7 @@ namespace TagLib.Mpeg4
         ///    channels in the audio represented by the current
         ///    instance.
         /// </value>
-        public int AudioChannels {
+        public virtual int AudioChannels {
             get { return channel_count; }
         }
 
@@ -222,7 +227,7 @@ namespace TagLib.Mpeg4
         ///    A <see cref="int" /> value containing the sample size of
         ///    the audio represented by the current instance.
         /// </value>
-        public int AudioSampleSize {
+        public virtual int AudioSampleSize {
             get { return sample_size; }
         }
 

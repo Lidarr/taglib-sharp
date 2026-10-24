@@ -494,7 +494,12 @@ namespace TagLib.Mpeg4
                     type == BoxType.Trak) {
                     ParseTagAndProperties (header.HeaderSize + position, header.TotalBoxSize + position, handler, AddParent (parents, header));
                 } else if (type == BoxType.Stsd) {
-                    stsd_boxes.Add (BoxFactory.CreateBox (file, header, handler));
+                    var description = BoxFactory.CreateBox (file, header, handler);
+                    stsd_boxes.Add (description);
+                    foreach (var entry in description.Children) {
+                        if (entry is AppleLosslessSampleEntry alac)
+                            ReadAppleLosslessBitrate (alac, parents);
+                    }
                 } else if (type == BoxType.Hdlr) {
                     handler = BoxFactory.CreateBox (file, header, handler) as IsoHandlerBox;
                 } else if (mvhd_box == null &&
@@ -516,6 +521,76 @@ namespace TagLib.Mpeg4
                 if (header.TotalBoxSize == 0)
                     break;
             }
+        }
+
+        // Locate a direct child without loading unrelated metadata or media payloads.
+        BoxHeader? FindChildHeader (BoxHeader parent, ByteVector type)
+        {
+            long end = parent.Position + parent.TotalBoxSize;
+            for (long position = parent.Position + parent.HeaderSize; position + 8 <= end;) {
+                var header = new BoxHeader (file, position);
+                if (header.TotalBoxSize < header.HeaderSize || header.TotalBoxSize > end - position)
+                    throw new CorruptFileException ("Invalid MP4 child box size.");
+                if (header.BoxType == type)
+                    return header;
+                position += header.TotalBoxSize;
+            }
+            return null;
+        }
+
+        // Read the encoded AUDIO bytes and the same track's media duration. Neither
+        // artwork nor another track should contribute to an ALAC stream's bitrate.
+        void ReadAppleLosslessBitrate (AppleLosslessSampleEntry entry, List<BoxHeader> parents)
+        {
+            if (parents == null)
+                return;
+            BoxHeader? media = null;
+            BoxHeader? samples = null;
+            foreach (var parent in parents) {
+                if (parent.BoxType == BoxType.Mdia)
+                    media = parent;
+                if (parent.BoxType == BoxType.Stbl)
+                    samples = parent;
+            }
+            if (!media.HasValue || !samples.HasValue)
+                return;
+            var mdhd = FindChildHeader (media.Value, "mdhd");
+            var stsz = FindChildHeader (samples.Value, "stsz");
+            if (!mdhd.HasValue || !stsz.HasValue)
+                return;
+
+            long mediaSize = mdhd.Value.TotalBoxSize - mdhd.Value.HeaderSize;
+            file.Seek (mdhd.Value.Position + mdhd.Value.HeaderSize);
+            byte version = file.ReadBlock (1)[0];
+            if (version > 1 || mediaSize < (version == 1 ? 36 : 24))
+                throw new CorruptFileException ("Invalid MP4 media header.");
+            file.Seek (mdhd.Value.Position + mdhd.Value.HeaderSize + (version == 1 ? 20 : 12));
+            uint timescale = file.ReadBlock (4).ToUInt ();
+            ulong duration = version == 1 ? file.ReadBlock (8).ToULong () : file.ReadBlock (4).ToUInt ();
+
+            long sampleSize = stsz.Value.TotalBoxSize - stsz.Value.HeaderSize;
+            if (sampleSize < 12)
+                throw new CorruptFileException ("Truncated MP4 sample size box.");
+            file.Seek (stsz.Value.Position + stsz.Value.HeaderSize + 4);
+            uint fixedSize = file.ReadBlock (4).ToUInt ();
+            uint count = file.ReadBlock (4).ToUInt ();
+            ulong bytes = (ulong)fixedSize * count;
+            if (fixedSize == 0) {
+                if ((ulong)count * 4 > (ulong)(sampleSize - 12))
+                    throw new CorruptFileException ("Truncated MP4 sample sizes.");
+                // Read variable-size packet tables in bounded batches instead of
+                // allocating an array proportional to the recording length.
+                while (count > 0) {
+                    int batch = (int)Math.Min (count, 4096);
+                    var data = file.ReadBlock (batch * 4);
+                    if (data.Count != batch * 4)
+                        throw new CorruptFileException ("Truncated MP4 sample sizes.");
+                    for (int i = 0; i < batch; i++)
+                        bytes += data.Mid (i * 4, 4).ToUInt ();
+                    count -= (uint)batch;
+                }
+            }
+            entry.SetAverageBitrate (bytes, duration, timescale);
         }
 
         /// <summary>
